@@ -5,7 +5,6 @@ import YoutubePlayer from "react-native-youtube-iframe";
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import Slider from '@react-native-community/slider';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function App() {
   const [playing, setPlaying] = useState(true);
@@ -103,10 +102,8 @@ export default function App() {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  const youtubeUrl = "https://youtu.be/xgBhFzSXbMM";
+  const youtubeUrl = "https://youtu.be/gdICnofxHEM";
   const videoId = getYoutubeVideoId(youtubeUrl);
-
-  const [isBuffering, setIsBuffering] = useState(false);
 
   const onStateChange = useCallback((state) => {
     if (state === "ended") {
@@ -116,10 +113,6 @@ export default function App() {
     } else if (state === "paused") {
       // When video is paused, make sure controls are visible
       setControlsVisible(true);
-    } else if (state === "buffering") {
-      setIsBuffering(true);
-    } else if (state === "playing") {
-      setIsBuffering(false);
     }
   }, []);
   
@@ -241,31 +234,15 @@ export default function App() {
               iv_load_policy: 0,
               fs: 0,
               autohide: 1,
-
-              autoplay: 1,
-              enablejsapi: 1,
-              origin: 'https://yourdomain.com',
-              preload: true,
+              suggestedQuality: 'highres',
             }}
             webViewProps={{
               androidLayerType: 'hardware',
               androidHardwareAccelerationDisabled: false,
               javaScriptEnabled: true,
               domStorageEnabled: true,
-              allowsFullscreenVideo: true,
+              allowsFullscreenVideo: true, // Disable WebView fullscreen to use our custom one
               renderToHardwareTextureAndroid: true,
-              
-              // Add these optimizations
-              cacheEnabled: true,
-              cacheMode: 'LOAD_DEFAULT',
-              mediaPlaybackRequiresUserAction: false,
-              allowsInlineMediaPlayback: true,
-              
-              // Improve WebView performance
-              startInLoadingState: true,
-              scalesPageToFit: true,
-              useWebKit: true,
-              
               onLayout: () => {},
             }}
             forceAndroidAutoplay={true}
@@ -276,30 +253,22 @@ export default function App() {
             activeOpacity={1}
           >
             <View style={[styles.overlay, (!videoReady || !controlsVisible) && !videoEnded && styles.hidden]}>
-              {/* Add gradient overlay for better text visibility */}
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.7)']}
-                style={styles.gradientOverlay}
-              />
-              
               <View style={styles.topControls}>
-                <TouchableOpacity onPress={toggleFullscreen} style={styles.controlButton}>
-                  <Icon name={isFullscreen ? "fullscreen-exit" : "fullscreen"} size={24} color="white" />
+                <TouchableOpacity onPress={toggleFullscreen} style={styles.fullscreenButton}>
+                  <Icon name={isFullscreen ? "fullscreen-exit" : "fullscreen"} size={30} color="white" />
                 </TouchableOpacity>
               </View>
-              
-              <View style={styles.centerControls}>
-                <TouchableOpacity style={styles.controlButton} onPress={seekBackward}>
-                  <Icon name="replay-10" size={36} color="white" />
+              <View style={styles.controls}>
+                <TouchableOpacity onPress={seekBackward}>
+                  <Icon name="replay-10" size={40} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.playPauseButton} onPress={() => setPlaying(!playing)}>
-                  <Icon name={playing ? "pause" : "play-arrow"} size={42} color="white" />
+                <TouchableOpacity onPress={() => setPlaying(!playing)}>
+                  <Icon name={playing ? "pause" : "play-arrow"} size={40} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.controlButton} onPress={seekForward}>
-                  <Icon name="forward-10" size={36} color="white" />
+                <TouchableOpacity onPress={seekForward}>
+                  <Icon name="forward-10" size={40} color="white" />
                 </TouchableOpacity>
               </View>
-              
               <View style={styles.sliderContainer}>
                 <View style={styles.timeText}>
                   <Text style={styles.time}>{formatTime(currentTime)}</Text>
@@ -311,27 +280,13 @@ export default function App() {
                   maximumValue={duration}
                   value={currentTime}
                   onValueChange={onSliderValueChange}
-                  minimumTrackTintColor="#FF0000"
-                  maximumTrackTintColor="rgba(255,255,255,0.3)"
+                  minimumTrackTintColor="#FFFFFF"
+                  maximumTrackTintColor="#888888"
                   thumbTintColor="#FFFFFF"
                 />
               </View>
             </View>
-            {videoEnded && (
-              <View style={styles.endedOverlay}>
-                <TouchableOpacity 
-                  style={styles.replayButton}
-                  onPress={() => {
-                    setVideoEnded(false);
-                    setPlaying(true);
-                    playerRef.current?.seekTo(0, true);
-                  }}
-                >
-                  <Icon name="replay" size={50} color="white" />
-                  <Text style={styles.replayText}>Replay</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            {videoEnded && <View style={styles.endedOverlay} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -343,20 +298,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: 0,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
   videoContainer: {
     position: 'relative',
     backgroundColor: '#000',
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   touchableOverlay: {
     position: 'absolute',
@@ -375,23 +323,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 1,
   },
-  gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 150,
-  },
   endedOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     zIndex: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   hidden: {
     opacity: 0,
@@ -402,33 +341,25 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: 12,
+    padding: 10,
     zIndex: 2,
   },
-  controlButton: {
+  fullscreenButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 20,
-    padding: 8,
-    marginHorizontal: 4,
+    padding: 5,
   },
-  centerControls: {
+  controls: {
     position: 'absolute',
-    top: 0,
+    bottom: 50,
     left: 0,
     right: 0,
-    bottom: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 30,
-  },
-  playPauseButton: {
-    backgroundColor: 'rgba(255, 0, 0, 0.8)',
-    borderRadius: 30,
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
+    gap: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingVertical: 10,
   },
   sliderContainer: {
     position: 'absolute',
@@ -436,9 +367,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   slider: {
     width: '100%',
@@ -448,37 +378,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 5,
-    marginBottom: -8,
   },
   time: {
     color: 'white',
     fontSize: 12,
-    fontWeight: '600',
   },
-  bufferingContainer: {
+  pausedOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    zIndex: 3,
   },
-  videoInfo: {
-    position: 'absolute',
-    top: 50,
-    left: 16,
-    right: 16,
-    zIndex: 2,
-  },
-  videoTitle: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: {width: -1, height: 1},
-    textShadowRadius: 10,
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.8,
   },
 });
